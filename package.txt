@@ -1,0 +1,32 @@
+{
+  "name": "quiz-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "NODE_ENV=development nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prod": "NODE_ENV=production node app.js",
+    "build:prod": "docker build -t quizapp-api-prod:1.0 -f Dockerfile .",
+    "run:prod": "docker run -d -p 8080:8080 --name quizapp-api-prod quizapp-api-prod:1.0",
+    "clean:prod": "docker stop quizapp-api-prod && docker rm quizapp-api-prod"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "author": "Ken",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^7.6.1",
+    "socket.io": "^4.7.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}

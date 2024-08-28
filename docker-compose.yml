@@ -1,0 +1,50 @@
+services:
+  mysqldb:
+    image: mysql:8.0
+    container_name: mysqlcontainer
+    command: --default-authentication-plugin=mysql_native_password
+    restart: unless-stopped
+    volumes:
+      - ./dbinit/migrations.dev.sql:/docker-entrypoint-initdb.d/0_init.sql
+      - $HOME/database:/var/lib/mysql
+    ports:
+      - 3306:3306
+    expose:
+      - 3306
+    environment:
+      MYSQL_DATABASE: quizapp_dev
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: sigma12345
+      MYSQL_ROOT_PASSWORD: sigma12345
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysqldb
+    networks:
+      - internalnet
+
+  nodeapp:
+    container_name: nodeappcontainer
+    build: .
+    image: nodeapp:v1
+    volumes:
+      - $HOME/nodeapp:/code
+    ports:
+      - 8080:8080
+    expose:
+      - 8080
+    environment:
+      DB_NAME: quizapp_dev
+      DB_HOST: mysqldb
+      DB_PORT: 3306
+      DB_USER: "admin"
+      DB_PASSWORD: "sigma12345"
+      SERVICE_TAGS: dev
+      SERVICE_NAME: nodeappservice
+      PORT: 8080
+    depends_on:
+      - mysqldb
+    networks:
+      - internalnet
+
+networks:
+  internalnet:
+    driver: bridge
