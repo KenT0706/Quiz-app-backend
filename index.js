@@ -1,3 +1,9 @@
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config(); // Load .env file variables into process.env
+}
+console.log('MONGODB_URI:', process.env.MONGODB_URI); // Debugging: Check if the variable is set
+
+
 const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
@@ -20,6 +26,10 @@ mongoose.connect(mongoURI, {
   console.log('Connected to MongoDB');
 }).catch((err) => {
   console.error('Could not connect to MongoDB', err);
+  if (!mongoURI) {
+    console.error('MONGODB_URI is not defined. Check your environment variables!');
+    process.exit(1);
+}
 });
 
 // Include the user registration route
@@ -32,3 +42,8 @@ const port = process.env.SERVING_PORT || 3000;
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
+
+mongoose
+    .connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
+    .then(() => console.log('Connected to MongoDB'))
+    .catch((err) => console.error('Error connecting to MongoDB:', err));
