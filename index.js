@@ -21,7 +21,7 @@ app.use(bodyParser.json());
 app.use(express.static('frontend/dist'));
 
 // Connect to MongoDB
-const mongoURI = process.env.MONGODB_URI || "mongodb+srv://kenktent:Short@aa@kenblitz.gka5p.mongodb.net/QuizApp?retryWrites=true&w=majority";
+const mongoURI = process.env.MONGODB_URI || "mongodb+srv://kenktent:Short@aa@kenblitz.gka5p.mongodb.net/?retryWrites=true&w=majority&appName=kenblitz";
 mongoose.connect(mongoURI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
