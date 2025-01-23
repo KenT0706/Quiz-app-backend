@@ -66,8 +66,14 @@ router.post('/login', async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 });
+router.use((req, res, next) => {
+  console.log(`Request received: ${req.method} ${req.url}`);
+  console.log('Request body:', req.body);
+  next();
+});
+
 router.get('/test', (req, res) => {
-  res.status(200).json({ message: 'Test route working' });
+  res.status(200).json({ message: 'Auth test route working!' });
 });
 
 module.exports = router;
