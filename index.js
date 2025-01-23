@@ -3,6 +3,9 @@ if (process.env.NODE_ENV !== 'production') {
 }
 console.log('MONGODB_URI:', process.env.MONGODB_URI); // Debugging: Check if the variable is set
 
+// Debugging: Log environment variables to verify they're set
+console.log('MONGODB_URI:', process.env.MONGODB_URI);
+console.log('SECRET_KEY:', process.env.SECRET_KEY);
 
 const express = require('express');
 const mongoose = require('mongoose');
@@ -43,7 +46,9 @@ app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
 
-mongoose
-    .connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
-    .then(() => console.log('Connected to MongoDB'))
-    .catch((err) => console.error('Error connecting to MongoDB:', err));
+app.use((req, res, next) => {
+      console.log(`Received ${req.method} request at ${req.url}`);
+      console.log('Body:', req.body);
+      next();
+  });
+  
