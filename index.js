@@ -1,8 +1,6 @@
 if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config();
 }
-console.log('MONGODB_URI:', process.env.MONGODB_URI);
-console.log('SECRET_KEY:', process.env.SECRET_KEY);
 
 const express = require('express');
 const mongoose = require('mongoose');
@@ -49,6 +47,19 @@ app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Internal server error' });
 });
+
+app.all('*', (req, res) => {
+  console.error(`Unhandled request: ${req.method} ${req.url}`);
+  res.status(404).send('Route not found');
+});
+
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  console.log('Headers:', req.headers);
+  console.log('Body:', req.body);
+  next();
+});
+
 
 // Start server
 const port = process.env.SERVING_PORT || 3000;
