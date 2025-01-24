@@ -80,4 +80,9 @@ router.get('/test', (req, res) => {
   res.send({ message: 'Auth route is working!' });
 });
 
+router.post('/register', (req, res) => {
+  res.send({ message: 'Register route is working!' });
+});
+
+
 module.exports = router;
