@@ -6,7 +6,7 @@ const router = express.Router();
 const QuizQuestion = require("../models/quizQuestion");
 const Quiz = require("../models/quiz");
 const QuizResult = require("../models/result");
-const checkAuth = require("../middlewares/auth.js");
+const checkAuth = require("../middlewares/authMiddleware.js");
 
 const handleError = (res, error, message = "Internal server error") => {
   console.error(message, error);

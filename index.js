@@ -42,7 +42,7 @@ mongoose
   });
 
 // Routes
-app.use('/auth', require('./routes/auth'));
+app.use('/auth', require('./routes/authRoutes'));
 app.use('/quiz', require('./routes/quizQuestion'));
 app.use('/quiz', require('./routes/quiz'));
 

@@ -3,7 +3,7 @@ const router = express.Router();
 
 const Quiz = require("../models/quiz");
 const QuizResult = require("../models/result");
-const checkAuth = require("../middlewares/auth");
+const checkAuth = require("../middlewares/authMiddleware");
 const quizQuestion = require("../models/quizQuestion");
 
 // Get all quizzes created by the logged-in user
