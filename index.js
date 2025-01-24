@@ -64,6 +64,13 @@ console.log('Environment Variables:');
 console.log('MONGODB_URI:', process.env.MONGODB_URI);
 console.log('SECRET_KEY:', process.env.SECRET_KEY);
 
+app._router.stack.forEach((middleware) => {
+  if (middleware.route) {
+    console.log(`Route registered: ${middleware.route.path}`);
+  }
+});
+
+
 // Default 404 Handler
 app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
