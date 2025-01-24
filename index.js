@@ -63,6 +63,11 @@ console.log('Environment Variables:');
 console.log('MONGODB_URI:', process.env.MONGODB_URI);
 console.log('SECRET_KEY:', process.env.SECRET_KEY);
 
+// Default 404 Handler
+app.use((req, res) => {
+  res.status(404).json({ message: 'Route not found' });
+});
+
 // Start server
 const port = process.env.PORT || 3000; // Use Vercel's default PORT environment variable
 app.listen(port, () => console.log(`Server running on port ${port}`));

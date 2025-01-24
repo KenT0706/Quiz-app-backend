@@ -11,7 +11,7 @@ console.log('Secret Key:', secretKey); // Add this to verify
 router.post('/register', async (req, res) => {
   try {
     const { username, email, password, userType } = req.body;
-
+    console.log('Register route hit:', req.body);
     // Check if the user already exists
     const existingUser = await User.findOne({ email });
 
