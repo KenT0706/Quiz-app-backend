@@ -42,6 +42,7 @@ mongoose
   });
 
 // Routes
+const authRoutes = require('./routes/authRoutes'); // Path must match exactly
 app.use('/auth', require('./routes/authRoutes'));
 app.use('/quiz', require('./routes/quizQuestion'));
 app.use('/quiz', require('./routes/quiz'));

@@ -76,4 +76,8 @@ router.get('/test', (req, res) => {
   res.status(200).json({ message: 'Auth test route working!' });
 });
 
+router.get('/test', (req, res) => {
+  res.send({ message: 'Auth route is working!' });
+});
+
 module.exports = router;
