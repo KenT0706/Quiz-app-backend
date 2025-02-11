@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 
 const quizQuestionSchema = new mongoose.Schema({
-  timeLimit: String,
   questionText: String,
   optionA: String,
   optionB: String,
@@ -9,7 +8,11 @@ const quizQuestionSchema = new mongoose.Schema({
   optionD: String,
   optionE: String,
   optionF: String,
-  correctAnswer: String,
+  correctAnswer: [String],
+  timeLimit: Number,
+  scorePerQuestion: Number, // Ensure this field is present
+  bonusScore: Number, // Ensure this field is present
+  bonusTimeLimit: Number, // Ensure this field is present
   quiz: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Quiz',

@@ -21,8 +21,11 @@ const questionSchema = Joi.object({
   optionD: Joi.string().optional(),
   optionE: Joi.string().optional(),
   optionF: Joi.string().optional(),
-  correctAnswer: Joi.string().required(),
+  correctAnswer: Joi.array().items(Joi.string().valid("A", "B", "C", "D", "E", "F")).required(),
   timeLimit: Joi.number().integer().min(0).required(),
+  scorePerQuestion: Joi.number().integer().min(0).required(),
+  bonusScore: Joi.number().integer().min(0).required(),
+  bonusTimeLimit: Joi.number().integer().min(0).required(), // Time in seconds for bonus eligibility
 });
 
 router.get("/:quizId/questions", checkAuth, async (req, res) => {
@@ -92,8 +95,10 @@ router.post("/getTimeLimit/:quizPin", async (req, res) => {
 });
 
 router.post("/:quizId/questions/add", checkAuth, async (req, res) => {
+  console.log("Request body:", req.body); // Debugging
   const { error } = questionSchema.validate(req.body);
   if (error) {
+    console.error("Validation error:", error.details); // Debugging
     return res.status(400).json({ message: error.details[0].message });
   }
 
@@ -109,8 +114,11 @@ router.post("/:quizId/questions/add", checkAuth, async (req, res) => {
       optionF,
       correctAnswer,
       timeLimit,
-    } = req.body;
-
+      scorePerQuestion,    // ADD
+      bonusScore,          // ADD
+      bonusTimeLimit       // ADD
+    } = req.body;          // ADD THESE FIELDS
+  
     const newQuestion = new QuizQuestion({
       questionText,
       optionA,
@@ -121,6 +129,9 @@ router.post("/:quizId/questions/add", checkAuth, async (req, res) => {
       optionF,
       correctAnswer,
       timeLimit,
+      scorePerQuestion,    // ADD
+      bonusScore,          // ADD
+      bonusTimeLimit,      // ADD
       quiz: quizId,
       createdBy: req.userData.userId,
     });
@@ -132,6 +143,7 @@ router.post("/:quizId/questions/add", checkAuth, async (req, res) => {
   }
 });
 
+
 router.put("/:quizId/questions/edit/:id", checkAuth, async (req, res) => {
   const { error } = questionSchema.validate(req.body);
   if (error) {
@@ -140,18 +152,21 @@ router.put("/:quizId/questions/edit/:id", checkAuth, async (req, res) => {
 
   try {
     const questionId = req.params.id;
-    const {
-      questionText,
-      optionA,
-      optionB,
-      optionC,
-      optionD,
-      optionE,
-      optionF,
-      correctAnswer,
+    const { 
+      questionText, 
+      optionA, 
+      optionB, 
+      optionC, 
+      optionD, 
+      optionE, 
+      optionF, 
+      correctAnswer, 
       timeLimit,
-    } = req.body;
-
+      scorePerQuestion,    // ADD
+      bonusScore,          // ADD
+      bonusTimeLimit       // ADD
+    } = req.body;          // ADD THESE FIELDS
+  
     const updatedQuestion = await QuizQuestion.findByIdAndUpdate(
       questionId,
       {
@@ -164,10 +179,12 @@ router.put("/:quizId/questions/edit/:id", checkAuth, async (req, res) => {
         optionF,
         correctAnswer,
         timeLimit,
+        scorePerQuestion,  // ADD
+        bonusScore,        // ADD
+        bonusTimeLimit     // ADD
       },
       { new: true }
     );
-
     if (!updatedQuestion) {
       return res.status(404).json({ message: "Question not found." });
     }
@@ -177,6 +194,7 @@ router.put("/:quizId/questions/edit/:id", checkAuth, async (req, res) => {
     handleError(res, error, "Failed to update the question.");
   }
 });
+
 
 router.get("/results/:quizPin", async (req, res) => {
   const { quizPin } = req.params;

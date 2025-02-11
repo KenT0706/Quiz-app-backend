@@ -79,22 +79,39 @@ router.post("/:quizId/saveResult", async (req, res) => {
   }
 });
 
-// Submit quiz answers
 router.post("/:quizId/submit", async (req, res) => {
   try {
-    const { answers, answerSpeed } = req.body;
+    const { answers, answerTimes } = req.body; // answerTimes is an array of times in seconds
     const quizId = req.params.quizId;
+    console.log("Received answers:", answers);
+    console.log("Received answerTimes:", answerTimes);
+
+    // Validate input
+    if (!answers || !Array.isArray(answers)) {
+      return res.status(400).json({ message: "Answers must be provided as an array." });
+    }
+    if (!answerTimes || !Array.isArray(answerTimes) || answerTimes.length !== answers.length) {
+      return res.status(400).json({ message: "Answer times must be provided as an array with the same length as answers." });
+    }
 
     const questions = await quizQuestion.find({ quiz: quizId }).exec();
+    console.log("Questions from DB:", questions);
     let score = 0;
 
     questions.forEach((question, index) => {
-      if (question.correctAnswer === answers[index]) {
-        score += 5;
-        if (answerSpeed[index] === true) score += 5;
+      if (question.correctAnswer.includes(answers[index])) {
+        score += question.scorePerQuestion;
+
+        // Calculate bonus score based on answer time
+        if (answerTimes[index] <= question.bonusTimeLimit) {
+          const timeDifference = question.bonusTimeLimit - answerTimes[index];
+          const bonusDeduction = Math.floor(timeDifference / 5); // Deduct 1 point for every 5 seconds
+          const finalBonusScore = Math.max(0, question.bonusScore - bonusDeduction);
+          score += finalBonusScore;
+        }
       }
     });
-
+    console.log("Final calculated score:", score);
     res.json({ score });
   } catch (error) {
     console.error(error);
