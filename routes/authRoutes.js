@@ -5,7 +5,7 @@ const User = require('../models/user');
 const jwt = require('jsonwebtoken');
 require('dotenv').config(); // Ensure this is included at the top
 
-const secretKey = process.env.SECRET_KEY;
+const secretKey = process.env.SECRET_KEY || 'your_default_secret_key'; // Add fallback
 console.log('Secret Key:', secretKey); // Add this to verify
 
 router.post('/register', async (req, res) => {

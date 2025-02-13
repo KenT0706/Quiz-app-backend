@@ -10,7 +10,10 @@ const cors = require('cors');
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: ['https://quiz-app-frontend-kappa.vercel.app', 'http://localhost:5173'],
+  credentials: true
+}));
 app.use(bodyParser.json());
 
 // Logging middleware
