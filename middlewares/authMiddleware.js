@@ -1,5 +1,3 @@
-// middleware/check-auth.js
-
 const jwt = require('jsonwebtoken');
 const secretKey = process.env.SECRET_KEY || 'your_default_secret_key';
 

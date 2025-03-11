@@ -1,4 +1,5 @@
 const express = require("express");
+const mongoose = require("mongoose"); // Add this line
 const router = express.Router();
 
 const Quiz = require("../models/quiz");
@@ -61,16 +62,18 @@ router.post("/add", checkAuth, async (req, res) => {
   }
 });
 
-// Save quiz result
 router.post("/:quizId/saveResult", async (req, res) => {
   try {
-    const { currentScore, name, quizPin, avtId } = req.body;
+    const quiz = await Quiz.findById(req.params.quizId);
+    if (!quiz) return res.status(404).json({ message: "Quiz not found" });
+
     const newResult = new QuizResult({
-      quizPin,
-      name,
-      result: currentScore,
-      avatarId: avtId,
+      quizPin: quiz.quizPin, // Use the quiz's actual PIN
+      name: req.body.name,
+      result: req.body.currentScore,
+      avatarId: req.body.avtId,
     });
+    
     await newResult.save();
     res.json({ message: "Result saved successfully.", newResult });
   } catch (error) {
@@ -81,40 +84,53 @@ router.post("/:quizId/saveResult", async (req, res) => {
 
 router.post("/:quizId/submit", async (req, res) => {
   try {
-    const { answers, answerTimes } = req.body; // answerTimes is an array of times in seconds
+    const { answers } = req.body;
     const quizId = req.params.quizId;
-    console.log("Received answers:", answers);
-    console.log("Received answerTimes:", answerTimes);
 
-    // Validate input
-    if (!answers || !Array.isArray(answers)) {
-      return res.status(400).json({ message: "Answers must be provided as an array." });
-    }
-    if (!answerTimes || !Array.isArray(answerTimes) || answerTimes.length !== answers.length) {
-      return res.status(400).json({ message: "Answer times must be provided as an array with the same length as answers." });
+    // Validate quizId
+    if (!mongoose.Types.ObjectId.isValid(quizId)) {
+      return res.status(400).json({ message: "Invalid quiz ID." });
     }
 
+    // Validate answers
+    if (!Array.isArray(answers)) {
+      return res.status(400).json({ message: "Answers must be an array." });
+    }
+
+    // Fetch all questions for this quiz
     const questions = await quizQuestion.find({ quiz: quizId }).exec();
-    console.log("Questions from DB:", questions);
+
+    // Create a lookup map for faster access by questionId
+    const questionMap = {};
+    questions.forEach(question => {
+      questionMap[question._id.toString()] = question;
+    });
+
     let score = 0;
 
-    questions.forEach((question, index) => {
-      if (question.correctAnswer.includes(answers[index])) {
-        score += question.scorePerQuestion;
+    // Calculate score based on answers
+    answers.forEach(answerObj => {
+      const { questionId, answerText, answerTime } = answerObj;
+      const question = questionMap[questionId];
+      if (!question) return; // Skip if question not found
 
-        // Calculate bonus score based on answer time
-        if (answerTimes[index] <= question.bonusTimeLimit) {
-          const timeDifference = question.bonusTimeLimit - answerTimes[index];
-          const bonusDeduction = Math.floor(timeDifference / 5); // Deduct 1 point for every 5 seconds
-          const finalBonusScore = Math.max(0, question.bonusScore - bonusDeduction);
-          score += finalBonusScore;
+      if (question.questionType === 'multiple-choice') {
+        // Use answerText directly as the selected letter
+        const selectedLetter = answerText.toUpperCase();
+        if (question.correctAnswer.includes(selectedLetter)) {
+          score += question.scorePerQuestion;
+          // Add bonus if answered quickly enough
+          if (answerTime <= question.bonusTimeLimit) {
+            score += question.bonusScore;
+          }
         }
       }
+      // Open-ended questions don't contribute to score
     });
-    console.log("Final calculated score:", score);
+
     res.json({ score });
   } catch (error) {
-    console.error(error);
+    console.error("Error calculating score:", error);
     res.status(500).json({ message: "Failed to calculate the score." });
   }
 });

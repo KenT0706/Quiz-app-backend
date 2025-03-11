@@ -5,6 +5,7 @@ if (process.env.NODE_ENV !== 'production') {
 const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
+const answerRoutes = require('./routes/answerRoutes');
 const cors = require('cors');
 
 const app = express();
@@ -49,6 +50,7 @@ const authRoutes = require('./routes/authRoutes'); // Path must match exactly
 app.use('/auth', require('./routes/authRoutes'));
 app.use('/quiz', require('./routes/quizQuestion'));
 app.use('/quiz', require('./routes/quiz'));
+app.use('/answers', answerRoutes);
 
 // Catch-all for unhandled routes
 app.use((req, res) => {
@@ -67,16 +69,12 @@ console.log('Environment Variables:');
 console.log('MONGODB_URI:', process.env.MONGODB_URI);
 console.log('SECRET_KEY:', process.env.SECRET_KEY);
 
+// Add this before routes registration to debug endpoints
+console.log('Registered routes:');
 app._router.stack.forEach((middleware) => {
   if (middleware.route) {
-    console.log(`Route registered: ${middleware.route.path}`);
+    console.log(`${Object.keys(middleware.route.methods)} ${middleware.route.path}`);
   }
-});
-
-
-// Default 404 Handler
-app.use((req, res) => {
-  res.status(404).json({ message: 'Route not found' });
 });
 
 // Start server

@@ -15,18 +15,45 @@ const handleError = (res, error, message = "Internal server error") => {
 
 const questionSchema = Joi.object({
   questionText: Joi.string().required(),
-  optionA: Joi.string().required(),
-  optionB: Joi.string().required(),
-  optionC: Joi.string().optional(),
-  optionD: Joi.string().optional(),
-  optionE: Joi.string().optional(),
-  optionF: Joi.string().optional(),
-  correctAnswer: Joi.array().items(Joi.string().valid("A", "B", "C", "D", "E", "F")).required(),
-  timeLimit: Joi.number().integer().min(0).required(),
-  scorePerQuestion: Joi.number().integer().min(0).required(),
-  bonusScore: Joi.number().integer().min(0).required(),
-  bonusTimeLimit: Joi.number().integer().min(0).required(), // Time in seconds for bonus eligibility
-});
+  questionType: Joi.string().valid('multiple-choice', 'open-ended').required(),
+  timeLimit: Joi.number().integer().min(1).required(), // Minimum 1 minute
+  optionA: Joi.when('questionType', {
+    is: 'multiple-choice',
+    then: Joi.string().min(1).required(),
+    otherwise: Joi.string().optional().allow('')
+  }),
+  optionB: Joi.when('questionType', {
+    is: 'multiple-choice',
+    then: Joi.string().min(1).required(),
+    otherwise: Joi.string().optional().allow('')
+  }),
+  optionC: Joi.string().optional().allow(''),
+  optionD: Joi.string().optional().allow(''),
+  optionE: Joi.string().optional().allow(''),
+  optionF: Joi.string().optional().allow(''),
+  correctAnswer: Joi.when('questionType', {
+    is: 'multiple-choice',
+    then: Joi.array().items(Joi.string().valid("A", "B", "C", "D", "E", "F")).min(1).required(),
+    otherwise: Joi.array().optional()
+  }),
+  scorePerQuestion: Joi.when('questionType', {
+    is: 'multiple-choice',
+    then: Joi.number().integer().min(1).required(),
+    otherwise: Joi.number().optional()
+  }),
+  bonusScore: Joi.when('questionType', {
+    is: 'multiple-choice',
+    then: Joi.number().integer().min(0).required(),
+    otherwise: Joi.number().optional()
+  }),
+  bonusTimeLimit: Joi.when('questionType', {
+    is: 'multiple-choice',
+    then: Joi.number().integer().min(1).required(),
+    otherwise: Joi.number().optional()
+    
+  }),
+  
+}).options({ stripUnknown: true }); // Add this line
 
 router.get("/:quizId/questions", checkAuth, async (req, res) => {
   try {
@@ -95,55 +122,49 @@ router.post("/getTimeLimit/:quizPin", async (req, res) => {
 });
 
 router.post("/:quizId/questions/add", checkAuth, async (req, res) => {
-  console.log("Request body:", req.body); // Debugging
   const { error } = questionSchema.validate(req.body);
   if (error) {
-    console.error("Validation error:", error.details); // Debugging
+    console.log("Validation Error:", error.details);
     return res.status(400).json({ message: error.details[0].message });
   }
 
   try {
-    const quizId = req.params.quizId;
-    const {
-      questionText,
-      optionA,
-      optionB,
-      optionC,
-      optionD,
-      optionE,
-      optionF,
-      correctAnswer,
-      timeLimit,
-      scorePerQuestion,    // ADD
-      bonusScore,          // ADD
-      bonusTimeLimit       // ADD
-    } = req.body;          // ADD THESE FIELDS
-  
-    const newQuestion = new QuizQuestion({
-      questionText,
-      optionA,
-      optionB,
-      optionC,
-      optionD,
-      optionE,
-      optionF,
-      correctAnswer,
-      timeLimit,
-      scorePerQuestion,    // ADD
-      bonusScore,          // ADD
-      bonusTimeLimit,      // ADD
-      quiz: quizId,
+    const payload = {
+      ...req.body,
+      quiz: req.params.quizId,
       createdBy: req.userData.userId,
-    });
+      timeLimit: req.body.timeLimit * 60 // Convert minutes to seconds
+    };
 
+    // Clear unnecessary fields for open-ended
+    if (req.body.questionType === 'open-ended') {
+      payload.optionC = '';
+      payload.optionD = '';
+      payload.optionE = '';
+      payload.optionF = '';
+      payload.correctAnswer = [];
+      payload.scorePerQuestion = 0;
+      payload.bonusScore = 0;
+      payload.bonusTimeLimit = 0;
+    }
+
+    const newQuestion = new QuizQuestion(payload);
     const savedQuestion = await newQuestion.save();
+    
+    // Update parent quiz
+    await Quiz.findByIdAndUpdate(
+      req.params.quizId,
+      { $push: { questions: savedQuestion._id } }
+    );
+
     res.status(201).json(savedQuestion);
   } catch (error) {
-    handleError(res, error, "Failed to add the question.");
+    console.error("Server Error:", error);
+    res.status(500).json({ message: "Failed to add question" });
   }
 });
 
-
+// routes/quizQuestion.js
 router.put("/:quizId/questions/edit/:id", checkAuth, async (req, res) => {
   const { error } = questionSchema.validate(req.body);
   if (error) {
@@ -152,39 +173,22 @@ router.put("/:quizId/questions/edit/:id", checkAuth, async (req, res) => {
 
   try {
     const questionId = req.params.id;
-    const { 
-      questionText, 
-      optionA, 
-      optionB, 
-      optionC, 
-      optionD, 
-      optionE, 
-      optionF, 
-      correctAnswer, 
-      timeLimit,
-      scorePerQuestion,    // ADD
-      bonusScore,          // ADD
-      bonusTimeLimit       // ADD
-    } = req.body;          // ADD THESE FIELDS
-  
+    const updateData = {
+      ...req.body,
+      timeLimit: req.body.timeLimit * 60 // Convert minutes to seconds here
+    };
+
+    // Remove restricted fields
+    delete updateData.quiz;
+    delete updateData.createdBy;
+    delete updateData.__v;
+
     const updatedQuestion = await QuizQuestion.findByIdAndUpdate(
       questionId,
-      {
-        questionText,
-        optionA,
-        optionB,
-        optionC,
-        optionD,
-        optionE,
-        optionF,
-        correctAnswer,
-        timeLimit,
-        scorePerQuestion,  // ADD
-        bonusScore,        // ADD
-        bonusTimeLimit     // ADD
-      },
+      updateData,
       { new: true }
     );
+    
     if (!updatedQuestion) {
       return res.status(404).json({ message: "Question not found." });
     }

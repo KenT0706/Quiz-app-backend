@@ -12,6 +12,16 @@ const quizSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
+  questionType: {
+    type: String,
+    enum: ['multiple-choice', 'open-ended'],
+    default: 'multiple-choice'
+  },
+  timeLimit: Number,
+  questions: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'QuizQuestion'
+  }]
 });
 
 
