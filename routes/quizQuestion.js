@@ -16,7 +16,7 @@ const handleError = (res, error, message = "Internal server error") => {
 const questionSchema = Joi.object({
   questionText: Joi.string().required(),
   questionType: Joi.string().valid('multiple-choice', 'open-ended').required(),
-  timeLimit: Joi.number().integer().min(1).required(), // Minimum 1 minute
+  timeLimit: Joi.number().integer().min(1).required(), // Expecting timeLimit in seconds from frontend
   optionA: Joi.when('questionType', {
     is: 'multiple-choice',
     then: Joi.string().min(1).required(),
@@ -50,9 +50,9 @@ const questionSchema = Joi.object({
     is: 'multiple-choice',
     then: Joi.number().integer().min(1).required(),
     otherwise: Joi.number().optional()
-    
+
   }),
-  
+
 }).options({ stripUnknown: true }); // Add this line
 
 router.get("/:quizId/questions", checkAuth, async (req, res) => {
@@ -133,7 +133,7 @@ router.post("/:quizId/questions/add", checkAuth, async (req, res) => {
       ...req.body,
       quiz: req.params.quizId,
       createdBy: req.userData.userId,
-      timeLimit: req.body.timeLimit * 60 // Convert minutes to seconds
+      timeLimit: req.body.timeLimit // Expecting timeLimit in seconds from frontend
     };
 
     // Clear unnecessary fields for open-ended
@@ -150,7 +150,7 @@ router.post("/:quizId/questions/add", checkAuth, async (req, res) => {
 
     const newQuestion = new QuizQuestion(payload);
     const savedQuestion = await newQuestion.save();
-    
+
     // Update parent quiz
     await Quiz.findByIdAndUpdate(
       req.params.quizId,
@@ -175,7 +175,7 @@ router.put("/:quizId/questions/edit/:id", checkAuth, async (req, res) => {
     const questionId = req.params.id;
     const updateData = {
       ...req.body,
-      timeLimit: req.body.timeLimit * 60 // Convert minutes to seconds here
+      timeLimit: req.body.timeLimit // Expecting timeLimit in seconds from frontend
     };
 
     // Remove restricted fields
@@ -188,7 +188,7 @@ router.put("/:quizId/questions/edit/:id", checkAuth, async (req, res) => {
       updateData,
       { new: true }
     );
-    
+
     if (!updatedQuestion) {
       return res.status(404).json({ message: "Question not found." });
     }
