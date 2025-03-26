@@ -55,4 +55,37 @@ router.get('/:questionId', async (req, res) => {
   }
 });
 
+// Delete all answers for a specific question
+router.delete('/question/:questionId/delete', async (req, res) => {
+  const { questionId } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(questionId)) {
+    return res.status(400).json({ message: 'Invalid question ID format' });
+  }
+  try {
+    const result = await Answer.deleteMany({ questionId: questionId });
+    res.json({ message: `${result.deletedCount} answers deleted for question ${questionId}` });
+  } catch (error) {
+    console.error('Error deleting answers by question ID:', error);
+    res.status(500).json({ message: 'Error deleting answers for this question' });
+  }
+});
+
+// Delete a single answer by ID
+router.delete('/:answerId/delete', async (req, res) => {
+  const { answerId } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(answerId)) {
+    return res.status(400).json({ message: 'Invalid answer ID format' });
+  }
+  try {
+    const deletedAnswer = await Answer.findByIdAndDelete(answerId);
+    if (!deletedAnswer) {
+      return res.status(404).json({ message: 'Answer not found' });
+    }
+    res.json({ message: 'Answer deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting answer:', error);
+    res.status(500).json({ message: 'Error deleting this answer' });
+  }
+});
+
 module.exports = router;
