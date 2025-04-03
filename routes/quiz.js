@@ -5,7 +5,7 @@ const router = express.Router();
 const Quiz = require("../models/quiz");
 const QuizResult = require("../models/result");
 const checkAuth = require("../middlewares/authMiddleware");
-const quizQuestion = require("../models/quizQuestion");
+const QuizQuestion = require("../models/quizQuestion"); // Consistent naming
 
 // Get all quizzes created by the logged-in user
 router.get("/", checkAuth, async (req, res) => {
@@ -167,6 +167,68 @@ router.get("/results/:quizPin", async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Failed to fetch results." });
+  }
+});
+
+router.delete('/:quizId/results/delete', async (req, res) => {
+  const { quizId } = req.params;
+  try {
+    // 1. Find the quiz to get its PIN
+    const quiz = await Quiz.findById(quizId);
+    if (!quiz) return res.status(404).json({ message: 'Quiz not found' });
+
+    // 2. Delete results using the quiz's PIN
+    const result = await QuizResult.deleteMany({ quizPin: quiz.quizPin });
+    
+    res.json({ message: `${result.deletedCount} attempts deleted` });
+  } catch (error) {
+    console.error('Error deleting quiz results:', error);
+    res.status(500).json({ message: 'Error deleting attempt history' });
+  }
+});
+
+router.post("/:id/duplicate", checkAuth, async (req, res) => {
+  try {
+    const originalQuiz = await Quiz.findById(req.params.id)
+      .populate('questions')
+      .exec();
+
+    if (!originalQuiz) {
+      return res.status(404).json({ message: "Quiz not found" });
+    }
+
+    // Create new quiz with "Copy" suffix
+    const newQuiz = new Quiz({
+      title: `${originalQuiz.title} (Copy)`,
+      scenario: originalQuiz.scenario,
+      createdBy: req.userData.userId,
+      questionType: originalQuiz.questionType,
+      timeLimit: originalQuiz.timeLimit
+    });
+
+    // Save to generate new quizPin
+    await newQuiz.save();
+
+    // Duplicate all questions
+    const questionPromises = originalQuiz.questions.map(async (question) => {
+      const newQuestion = new QuizQuestion({
+        ...question.toObject(),
+        _id: undefined, // Generate new ID
+        quiz: newQuiz._id,
+        createdBy: req.userData.userId
+      });
+      await newQuestion.save();
+      return newQuestion._id;
+    });
+
+    // Update new quiz with duplicated questions
+    newQuiz.questions = await Promise.all(questionPromises);
+    await newQuiz.save();
+
+    res.status(201).json(newQuiz);
+  } catch (error) {
+    console.error("Duplication error:", error);
+    res.status(500).json({ message: "Failed to duplicate quiz" });
   }
 });
 
