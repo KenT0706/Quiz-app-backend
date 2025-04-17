@@ -2,56 +2,68 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 const Answer = require('../models/answer');
+const QuizQuestion = require('../models/quizQuestion'); // ✅ Add this line
 
-// Add proper validation and error handling
+
 router.post('/submit', async (req, res) => {
   try {
-    const { quizPin, questionId, answerText } = req.body;
-
-    // Validation
-    if (!quizPin || !questionId || !answerText) {
-      return res.status(400).json({ message: 'Missing required fields' });
+const { quizPin, questionId, answerText } = req.body;
+    
+    if (!quizPin || isNaN(quizPin)) {
+      console.error('Invalid quiz pin:', quizPin);
+      return res.status(400).json({ message: 'Valid quiz pin required' });
     }
-
-    // Validate questionId format
+    
     if (!mongoose.Types.ObjectId.isValid(questionId)) {
+      console.error('Invalid question ID:', questionId);
       return res.status(400).json({ message: 'Invalid question ID format' });
     }
 
+    if (!answerText || typeof answerText !== 'string') {
+      console.error('Invalid answer text:', answerText);
+      return res.status(400).json({ message: 'Valid answer text required' });
+    }
+
+    const questionExists = await QuizQuestion.exists({ _id: questionId });
+    if (!questionExists) {
+      console.error('Question not found:', questionId);
+      return res.status(404).json({ message: 'Question not found' });
+    }
+
     const newAnswer = new Answer({
-      quizPin,
-      questionId: new mongoose.Types.ObjectId(questionId), // Ensure proper type
+      quizPin: Number(quizPin),
+      questionId: new mongoose.Types.ObjectId(questionId),
       answerText
     });
-
-    await newAnswer.save();
-    res.status(201).json(newAnswer); // Return created answer for verification
+    const savedAnswer = await newAnswer.save();
+    res.status(201).json(savedAnswer);
   } catch (error) {
-    console.error('Submission Error:', error);
+    console.error('Submission Error:', error.message);
+    console.error('Error stack:', error.stack);
     res.status(500).json({ 
       message: 'Error submitting answer',
-      error: error.message // Include error details
+      error: error.message
     });
   }
 });
 
 
 
-// Fetch answers for a specific question
+// routes/answerRoutes.js
 router.get('/:questionId', async (req, res) => {
   try {
-    const questionId = req.params.questionId;
+      const questionId = req.params.questionId;
 
-    // Validate if questionId is a valid ObjectId
-    if (!mongoose.Types.ObjectId.isValid(questionId)) {
-      return res.status(400).json({ message: 'Invalid question ID' });
-    }
+      if (!mongoose.Types.ObjectId.isValid(questionId)) {
+          return res.status(400).json({ message: 'Invalid question ID' });
+      }
 
-    const answers = await Answer.find({ questionId: questionId })
-      .populate('userId', 'username');
-    res.status(200).json(answers);
+      const answers = await Answer.find({
+          questionId: new mongoose.Types.ObjectId(questionId)
+      }).populate('userId', 'username');
+      res.status(200).json(answers);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching answers' });
+      res.status(500).json({ message: 'Error fetching answers' });
   }
 });
 

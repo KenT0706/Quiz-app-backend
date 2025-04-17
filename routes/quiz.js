@@ -1,3 +1,4 @@
+const QuizQuestion = require("../models/quizQuestion"); // Consistent naming
 const express = require("express");
 const mongoose = require("mongoose"); // Add this line
 const router = express.Router();
@@ -5,7 +6,7 @@ const router = express.Router();
 const Quiz = require("../models/quiz");
 const QuizResult = require("../models/result");
 const checkAuth = require("../middlewares/authMiddleware");
-const QuizQuestion = require("../models/quizQuestion"); // Consistent naming
+
 
 // Get all quizzes created by the logged-in user
 router.get("/", checkAuth, async (req, res) => {
@@ -84,54 +85,46 @@ router.post("/:quizId/saveResult", async (req, res) => {
 
 router.post("/:quizId/submit", async (req, res) => {
   try {
-    const { answers } = req.body;
-    const quizId = req.params.quizId;
-
-    // Validate quizId
-    if (!mongoose.Types.ObjectId.isValid(quizId)) {
-      return res.status(400).json({ message: "Invalid quiz ID." });
+    if (!mongoose.Types.ObjectId.isValid(req.params.quizId)) {
+      return res.status(400).json({ message: "Invalid quiz ID format" });
     }
 
-    // Validate answers
-    if (!Array.isArray(answers)) {
-      return res.status(400).json({ message: "Answers must be an array." });
-    }
+    const quiz = await Quiz.findById(req.params.quizId);
+    if (!quiz) return res.status(404).json({ message: "Quiz not found" });
 
-    // Fetch all questions for this quiz
-    const questions = await quizQuestion.find({ quiz: quizId }).exec();
+    const answers = req.body.answers; // Get answers from request body
 
-    // Create a lookup map for faster access by questionId
+    const questions = await QuizQuestion.find({ quiz: req.params.quizId }).exec();
     const questionMap = {};
-    questions.forEach(question => {
-      questionMap[question._id.toString()] = question;
-    });
+    questions.forEach(q => questionMap[q._id.toString()] = q);
 
     let score = 0;
-
-    // Calculate score based on answers
-    answers.forEach(answerObj => {
-      const { questionId, answerText, answerTime } = answerObj;
-      const question = questionMap[questionId];
-      if (!question) return; // Skip if question not found
+    answers.forEach(answer => {
+      const question = questionMap[answer.questionId];
+      if (!question) return;
 
       if (question.questionType === 'multiple-choice') {
-        // Use answerText directly as the selected letter
-        const selectedLetter = answerText.toUpperCase();
-        if (question.correctAnswer.includes(selectedLetter)) {
+        const selected = answer.answerText.toUpperCase();
+        if (question.correctAnswer.includes(selected)) {
           score += question.scorePerQuestion;
-          // Add bonus if answered quickly enough
-          if (answerTime <= question.bonusTimeLimit) {
+          if (answer.answerTime <= question.bonusTimeLimit) {
             score += question.bonusScore;
           }
         }
       }
-      // Open-ended questions don't contribute to score
     });
+
+    if (questions.length === 0) {
+      return res.status(404).json({ message: "No questions found" });
+    }
 
     res.json({ score });
   } catch (error) {
     console.error("Error calculating score:", error);
-    res.status(500).json({ message: "Failed to calculate the score." });
+    res.status(500).json({ 
+      message: "Failed to calculate score",
+      error: error.message
+    });
   }
 });
 
@@ -158,10 +151,10 @@ router.put("/edit/:id", checkAuth, async (req, res) => {
   }
 });
 
-// Get results by quiz pin
+// routes/quiz.js - Update results endpoint
 router.get("/results/:quizPin", async (req, res) => {
   try {
-    const quizPin = req.params.quizPin;
+    const quizPin = Number(req.params.quizPin); // Convert to Number
     const results = await QuizResult.find({ quizPin }).sort({ result: -1 });
     res.json(results);
   } catch (error) {
@@ -169,6 +162,26 @@ router.get("/results/:quizPin", async (req, res) => {
     res.status(500).json({ message: "Failed to fetch results." });
   }
 });
+
+// routes/answerRoutes.js - Update answers endpoint
+router.get('/:questionId', async (req, res) => {
+  try {
+    const questionId = req.params.questionId;
+    
+    if (!mongoose.Types.ObjectId.isValid(questionId)) {
+      return res.status(400).json({ message: 'Invalid question ID' });
+    }
+
+    const answers = await Answer.find({ 
+      questionId: new mongoose.Types.ObjectId(questionId) // Convert to ObjectId
+    }).populate('userId', 'username');
+    
+    res.status(200).json(answers);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching answers' });
+  }
+});
+
 
 router.delete('/:quizId/results/delete', async (req, res) => {
   const { quizId } = req.params;

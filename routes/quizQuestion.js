@@ -55,6 +55,7 @@ const questionSchema = Joi.object({
 
 }).options({ stripUnknown: true }); // Add this line
 
+// routes/quizQuestion.js
 router.get("/:quizId/questions", checkAuth, async (req, res) => {
   try {
     const quizId = req.params.quizId;
@@ -70,6 +71,7 @@ router.get("/:quizId/questions", checkAuth, async (req, res) => {
     res.json({
       questions,
       results,
+      quiz // Make sure this is included in the response
     });
   } catch (error) {
     handleError(res, error, "Failed to fetch quiz questions.");

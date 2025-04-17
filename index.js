@@ -13,15 +13,16 @@ const app = express();
 // Middleware
 app.use(cors({
   origin: ['https://quiz-app-frontend-kappa.vercel.app', 'http://localhost:5173'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Include necessary methods
   credentials: true
 }));
 app.use(bodyParser.json());
 
 // Logging middleware
 app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-  console.log('Headers:', req.headers);
-  console.log('Body:', req.body);
+  // console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  // console.log('Headers:', req.headers);
+  // console.log('Body:', req.body);
   next();
 });
 
