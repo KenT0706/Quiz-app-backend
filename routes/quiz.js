@@ -72,7 +72,6 @@ router.post("/:quizId/saveResult", async (req, res) => {
       quizPin: quiz.quizPin, // Use the quiz's actual PIN
       name: req.body.name,
       result: req.body.currentScore,
-      avatarId: req.body.avtId,
     });
     
     await newResult.save();
