@@ -1,7 +1,9 @@
+//routes/quiz.js
 const QuizQuestion = require("../models/quizQuestion"); // Consistent naming
 const express = require("express");
 const mongoose = require("mongoose"); // Add this line
 const router = express.Router();
+const Folder = require("../models/folder");
 
 const Quiz = require("../models/quiz");
 const QuizResult = require("../models/result");
@@ -11,10 +13,32 @@ const checkAuth = require("../middlewares/authMiddleware");
 // Get all quizzes created by the logged-in user
 router.get("/", checkAuth, async (req, res) => {
   try {
-    const questions = await Quiz.find({ createdBy: req.userData.userId }).populate('folder');
-    res.json(questions);
+    console.log("Fetching quizzes for user:", req.userData.userId);
+    
+    // Use proper population with select
+    const quizzes = await Quiz.find({ 
+      createdBy: req.userData.userId 
+    })
+    .populate({
+      path: 'folder',
+      select: '_id name'  // Only get id and name
+    })
+    .lean();  // Convert to plain objects
+    
+    console.log(`Found ${quizzes.length} quizzes`);
+    
+    // Log each quiz's folder status
+    quizzes.forEach((quiz, index) => {
+      console.log(`Quiz ${index + 1}: ${quiz.title}`, {
+        id: quiz._id,
+        folderId: quiz.folder ? quiz.folder._id : 'null',
+        folderName: quiz.folder ? quiz.folder.name : 'No folder'
+      });
+    });
+    
+    res.json(quizzes);
   } catch (error) {
-    console.error(error);
+    console.error("Quiz fetch error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
@@ -23,6 +47,22 @@ router.get("/", checkAuth, async (req, res) => {
 router.delete("/:id/delete", checkAuth, async (req, res) => {
   try {
     const quizId = req.params.id;
+    
+    // First, find the quiz to get its folder
+    const quiz = await Quiz.findById(quizId);
+    if (!quiz) {
+      return res.status(404).json({ message: "Quiz not found." });
+    }
+    
+    // If the quiz is in a folder, remove it from the folder's quizzes array
+    if (quiz.folder) {
+      await Folder.findByIdAndUpdate(
+        quiz.folder,
+        { $pull: { quizzes: quizId } }
+      );
+    }
+    
+    // Now delete the quiz
     await Quiz.findByIdAndRemove(quizId);
     res.json({ message: "Quiz deleted successfully." });
   } catch (error) {
@@ -46,19 +86,37 @@ router.get("/:quizPin", async (req, res) => {
   }
 });
 
-// Add a new quiz
+// routes/quiz.js - Update the add quiz route with more logging
 router.post("/add", checkAuth, async (req, res) => {
   try {
-    const { scenario, title } = req.body;
+    const { scenario, title, folder } = req.body;
+    console.log("Creating quiz with data:", { scenario, title, folder });
+    console.log("User ID:", req.userData.userId);
+    
     const newQuiz = new Quiz({
       scenario,
       title,
-      createdBy: req.userData.userId, // From checkAuth middleware
+      createdBy: req.userData.userId,
+      folder: folder || null
     });
+    
+    console.log("New quiz object:", newQuiz);
     const savedQuiz = await newQuiz.save();
+    console.log("Saved quiz:", savedQuiz);
+    
+    if (folder) {
+      console.log("Adding quiz to folder:", folder);
+      const updatedFolder = await Folder.findByIdAndUpdate(
+        folder,
+        { $addToSet: { quizzes: savedQuiz._id } },
+        { new: true }
+      );
+      console.log("Updated folder:", updatedFolder);
+    }
+    
     res.status(201).json(savedQuiz);
   } catch (error) {
-    console.error(error);
+    console.error("Quiz creation error:", error);
     res.status(500).json({ message: "Failed to add the quiz." });
   }
 });
@@ -131,16 +189,44 @@ router.post("/:quizId/submit", async (req, res) => {
 router.put("/edit/:id", checkAuth, async (req, res) => {
   try {
     const quizId = req.params.id;
-    const { quizPin, scenario, title } = req.body;
+    const { quizPin, scenario, title, folder } = req.body;
 
+   const userId = req.userData.userId;
+
+      // Find the quiz first to get current folder
+    const oldQuiz = await Quiz.findById(quizId);
+    if (!oldQuiz) {
+      return res.status(404).json({ message: "Quiz not found." });
+    }
+    
+    // Check if folder changed
+    const oldFolder = oldQuiz.folder;
+    const newFolder = folder || null;
+    
+    // Update quiz
     const updatedQuiz = await Quiz.findByIdAndUpdate(
       quizId,
-      { quizPin, scenario, title },
+      { title, scenario, folder: newFolder },
       { new: true }
     );
-
-    if (!updatedQuiz) {
-      return res.status(404).json({ message: "Quiz not found." });
+    
+    // If folder changed, update both folders
+    if (String(oldFolder) !== String(newFolder)) {
+      // Remove from old folder if exists
+      if (oldFolder) {
+        await Folder.findByIdAndUpdate(
+          oldFolder,
+          { $pull: { quizzes: quizId } }
+        );
+      }
+      
+      // Add to new folder if exists
+      if (newFolder) {
+        await Folder.findByIdAndUpdate(
+          newFolder,
+          { $addToSet: { quizzes: quizId } }
+        );
+      }
     }
 
     res.json(updatedQuiz);
@@ -199,6 +285,7 @@ router.delete('/:quizId/results/delete', async (req, res) => {
   }
 });
 
+// routes/quiz.js - Update the duplicate route
 router.post("/:id/duplicate", checkAuth, async (req, res) => {
   try {
     const originalQuiz = await Quiz.findById(req.params.id)
@@ -215,7 +302,8 @@ router.post("/:id/duplicate", checkAuth, async (req, res) => {
       scenario: originalQuiz.scenario,
       createdBy: req.userData.userId,
       questionType: originalQuiz.questionType,
-      timeLimit: originalQuiz.timeLimit
+      timeLimit: originalQuiz.timeLimit,
+      folder: originalQuiz.folder || null // Copy the folder reference
     });
 
     // Save to generate new quizPin
@@ -236,6 +324,14 @@ router.post("/:id/duplicate", checkAuth, async (req, res) => {
     // Update new quiz with duplicated questions
     newQuiz.questions = await Promise.all(questionPromises);
     await newQuiz.save();
+    
+    // If the original quiz was in a folder, add the duplicate to the same folder
+    if (originalQuiz.folder) {
+      await Folder.findByIdAndUpdate(
+        originalQuiz.folder,
+        { $addToSet: { quizzes: newQuiz._id } }
+      );
+    }
 
     res.status(201).json(newQuiz);
   } catch (error) {
