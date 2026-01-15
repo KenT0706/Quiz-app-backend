@@ -56,7 +56,7 @@ router.post('/login', async (req, res) => {
 
     // Create a JWT token
     const token = jwt.sign({ userId: user._id, email: user.email }, secretKey, {
-      expiresIn: '3h',
+      expiresIn: '24h',
     });
 
     // Return the user type in the response
