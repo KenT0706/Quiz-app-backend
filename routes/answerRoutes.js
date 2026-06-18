@@ -2,12 +2,12 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 const Answer = require('../models/answer');
-const QuizQuestion = require('../models/quizQuestion'); // ✅ Add this line
+const QuizQuestion = require('../models/quizQuestion'); 
 
 
 router.post('/submit', async (req, res) => {
   try {
-const { quizPin, questionId, answerText } = req.body;
+const { quizPin, questionId, answerText, userName } = req.body;
     
     if (!quizPin || isNaN(quizPin)) {
       console.error('Invalid quiz pin:', quizPin);
@@ -30,11 +30,17 @@ const { quizPin, questionId, answerText } = req.body;
       return res.status(404).json({ message: 'Question not found' });
     }
 
-    const newAnswer = new Answer({
-      quizPin: Number(quizPin),
-      questionId: new mongoose.Types.ObjectId(questionId),
-      answerText
-    });
+    if (!userName || typeof userName !== 'string') {
+  console.error('Invalid user name:', userName);
+  return res.status(400).json({ message: 'Valid user name required' });
+}
+
+  const newAnswer = new Answer({
+  quizPin: Number(quizPin),
+  questionId: new mongoose.Types.ObjectId(questionId),
+  answerText,
+  userName
+});
     const savedAnswer = await newAnswer.save();
     res.status(201).json(savedAnswer);
   } catch (error) {
