@@ -52,6 +52,7 @@ app.use('/auth', require('./routes/authRoutes'));
 app.use('/quiz', require('./routes/quizQuestion'));
 app.use('/quiz', require('./routes/quiz'));
 app.use('/answers', answerRoutes);
+app.use('/api/folders', require('./routes/folderRoutes'));
 
 // Catch-all for unhandled routes
 app.use((req, res) => {

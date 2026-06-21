@@ -49,12 +49,13 @@ router.get("/:quizPin", async (req, res) => {
 // Add a new quiz
 router.post("/add", checkAuth, async (req, res) => {
   try {
-    const { scenario, title } = req.body;
-    const newQuiz = new Quiz({
-      scenario,
-      title,
-      createdBy: req.userData.userId, // From checkAuth middleware
-    });
+   const { scenario, title, folder } = req.body;
+const newQuiz = new Quiz({
+  scenario,
+  title,
+  folder: folder || null,
+  createdBy: req.userData.userId,
+});
     const savedQuiz = await newQuiz.save();
     res.status(201).json(savedQuiz);
   } catch (error) {
@@ -131,13 +132,12 @@ router.post("/:quizId/submit", async (req, res) => {
 router.put("/edit/:id", checkAuth, async (req, res) => {
   try {
     const quizId = req.params.id;
-    const { quizPin, scenario, title } = req.body;
-
-    const updatedQuiz = await Quiz.findByIdAndUpdate(
-      quizId,
-      { quizPin, scenario, title },
-      { new: true }
-    );
+    const { quizPin, scenario, title, folder } = req.body;
+const updatedQuiz = await Quiz.findByIdAndUpdate(
+  quizId,
+  { quizPin, scenario, title, folder: folder || null },
+  { new: true }
+);
 
     if (!updatedQuiz) {
       return res.status(404).json({ message: "Quiz not found." });
