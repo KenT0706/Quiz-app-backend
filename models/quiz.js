@@ -12,7 +12,7 @@ const quizSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
-  folder: { type: Schema.Types.ObjectId, ref: 'Folder', required: false },
+  folder: { type: mongoose.Schema.Types.ObjectId, ref: 'Folder', required: false },
   questionType: {
     type: String,
     enum: ['multiple-choice', 'open-ended'],
